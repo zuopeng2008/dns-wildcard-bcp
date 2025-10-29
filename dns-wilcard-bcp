@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
+<!ENTITY rfc2119 PUBLIC '' 
+  'http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml'>
+]>
+
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+
+<?rfc toc="yes"?>
+<?rfc symrefs="yes"?>
+<?rfc sortrefs="yes"?>
+<?rfc iprnotified="no"?>
+<?rfc strict="yes"?>
+<?rfc compact="yes" ?> 
+<?rfc subcompact="yes" ?>
+
+<rfc category="bcp" ipr="trust200902" docName="draft-avoid-large-wildcard-records-00">
+
+<front>
+<title abbrev="">Avoid large records with a wildcard owner name</title>
+
+
+<author fullname="Peng Zuo" initials="P." surname="Zuo"> 
+<organization>CNNIC</organization> <address> <postal> <street>No.4 South 4th 
+Street, Zhongguancun</street> <code>100190</code> <city>Beijing</city> 
+<country>China</country> </postal> <email>zuopeng@cnnic.cn</email> </address> 
+</author>
+
+
+<date month="October" year="2025"/> 
+<area>Internet Area</area> 
+<workgroup>DNS Operation Group</workgroup>
+
+<abstract>
+<t>
+As DNS hosting becomes increasingly centralized—with many zones hosted by the same providers and sharing common name servers—the risk of DNS amplification has grown even more critical. Attackers can exploit these shared authoritative servers to launch large-scale DDoS amplification attacks.
+</t>
+<t>
+This document provides operational guidance for DNS hosting providers to mitigate DDoS risks arising from amplification potential of responses derived from a wildcard owner name.
+</t>
+</abstract>
+</front>
+
+<middle>
+<section title="Introduction">
+<t>
+Due to the small query-large response potential of the DNS system, it is easy to yield great amplification towards the victims. [RFC 5358] points out that both recursive and authoritative DNS can be abused as amplifiers and recommends restricting recursive lookup services to intended clients to prevent default-configured recursive servers from acting as reflectors in denial-of-service attacks. [RFC 8482] recommends that DNS servers return minimal-sized responses for queries with QTYPE=ANY.
+</t>
+
+<t>
+Nowadays, the risk of DNS amplification remains critical. On one hand, DNS hosting has become increasingly centralized—many zones are now hosted by the same providers and share the same name servers. If a single hosted zone is exploited for DDoS amplification, all zones on those name servers may be affected. On the other hand, the number of open recursive servers worldwide continues to grow, providing more potential reflectors for attackers.
+</t>
+
+<t>
+This document offers guidance to help DNS hosting providers mitigate DDoS risks arising from maliciously crafted DNS data.
+</t>
+
+</section>
+
+<section title="Problem Description">
+<t>
+    An effective DNS DDoS amplification attack requires at least three conditions:<br/>
+&#160;&#160;(1)Very large responses to DNS queries.<br/>
+&#160;&#160;(2)Queries that consistently bypass recursive DNS caches.<br/>
+&#160;&#160;(3)Low cost or effort for the attacker.<br/>
+</t> 
+
+<t>
+This document provides operational guidance for DNS hosting providers to mitigate DDoS risks arising from amplification potential of responses derived from a wildcard owner name.
+</t>
+
+<t>
+To be specific, an attacker could launch a DDoS attack as follows:<br/>
+&#160;&#160;(1) Identify the name server that hosts the victim domain.<br/>
+&#160;&#160;(2) Publish a domain controlled by the attacker on the same name server.<br/>
+&#160;&#160;(3) Create very large records with wildcard owner name (for example, oversized TXT records).<br/>
+&#160;&#160;(4) Identify open recursive resolvers worldwide by scanning IP space.<br/>
+&#160;&#160;(5) Use packet generation tools to send DNS queries for random names (e.g., `{random}.attack TXT`) to open recursive resolvers worldwide.<br/>
+&#160;&#160;(6) The authoritative server hosting the victim domain will receive a massive volume of traffic and suffer a DDoS amplification.<br/>
+</t> 
+
+</section>
+
+
+<section title="Recommendations">
+<t>
+This section describes recommended best practices for keeping DNS data at reasonable sizes and reducing the risk that an attacker will abuse a shared name server. Because such attacks rely on shared authoritative name server, these recommendations are primarily aimed at DNS hosting providers.
+</t>
+
+<t>
+In general, operators should enforce size limits on large records, especially those with wildcard owner name, and apply restrict controls where records also have very short TTLs. Exact threshold values should be chosen by each operator based on their environment and risk tolerance.
+</t>
+
+<t>
+Recommendations:<br/>
+&#160;&#160;(1)Apply size limits to large records with wildcard owner names. Enforce maximum size thresholds for DNS records defined under wildcard owner names to prevent oversized responses from being used for amplification.<br/>
+&#160;&#160;(2)Apply size limits to large records with very small TTLs. Excessively small TTL values increase cache-miss frequency and consequently the number of forwarded queries.<br/>
+&#160;&#160;(3)Monitor for abnormal traffic patterns. Implement comprehensive logging and real-time alerting mechanisms to detect abnormal high query volumes or other signs of attack activity.<br/>
+&#160;&#160;(4)Rate-limit queries that generate very large responses. Employ per-source, per-prefix, or query-type–aware rate limiting to reduce the impact of amplification and prevent overload on authoritative servers.<br/>
+&#160;&#160;(5)Restrict and periodically review wildcard usage. Require clear justification, periodic review, or explicit approval for wildcard records containing large RDATA to avoid unintended amplification exposure.<br/>
+&#160;&#160;(6)Instrument and test mitigation controls. Regularly test monitoring, rate-limiting, and record-size enforcement mechanisms under realistic load conditions, and tune thresholds to ensure effective protection without disrupting legitimate traffic.<br/>
+</t> 
+
+<t>
+Applying these measures will reduce the attack surface for DNS amplification attacks while allowing operators to choose limits that balance availability and safety for their user base.
+</t>
+</section>
+
+<section title="Implementation Experience">
+<t>
+In our recent tests, some known DNS hosting provider allow users to configure super large records with  wildcard owner name. Although the response may exceed the standard UDP packet size limit, but it consequently triggers TCP fallback and allows responses to reach approximately 64KB. This results in an amplification factor exceeding 1000x.
+</t>
+
+<t>
+Some observations:<br/>
+&#160;&#160;(1)Cloudflare imposes a limit of 8192 bytes for jumbo TXT records.<br/>
+&#160;&#160;(2)Microsoft's DNS service sets a limit of 4096 bytes.<br/>
+&#160;&#160;(3)GoDaddy HAS NO LIMIT for jumbo TXT records.<br/>
+&#160;&#160;(4)Alibaba Cloud and DNSPod set limits after we report this risk to them.<br/>
+</t> 
+
+</section>
+
+   
+</middle>
+
+
+<back>
+
+<references title="Normative References">
+<?rfc include="reference.RFC.5358.xml" ?>
+<?rfc include="reference.RFC.8482.xml" ?>
+</references>	
+
+</back>
+</rfc>
+
