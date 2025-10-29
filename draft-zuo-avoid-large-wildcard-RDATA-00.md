@@ -5,7 +5,7 @@
 **Date:** October 2025  
 **Area:** Internet Area  
 **Workgroup:** DNS Operation Group  
-
+**Intended Status:** Best Current Practice
 ---
 
 ## Abstract
@@ -34,16 +34,23 @@ An effective DNS DDoS amplification attack requires at least three conditions:
 2. Queries that consistently bypass recursive DNS caches.  
 3. Low cost or effort for the attacker.  
 
-This document provides operational guidance for DNS hosting providers to mitigate DDoS risks arising from amplification potential of responses derived from a wildcard owner name.
+These conditions can be satisfied by configuring oversized DNS records with wildcard owner name (for example, very large TXT records) on a shared DNS hosting platform. In this case, an attacker can generate small queries with random labels—while discarding the responses—to induce excessive traffic between recursive resolvers and authoritative name servers. The use of wildcards causes queries for random names to bypass resolver caches and be repeatedly forwarded to upstream authoritative servers.
 
-To be specific, an attacker could launch a DDoS attack as follows:
+### 2.1. Attack Model
+Below is an example of how an attacker could launch a DDoS attack to exhaust the outbound capacity from the victim authoritative server:
 
 1. Identify the name server that hosts the victim domain.  
 2. Publish a domain controlled by the attacker on the same name server.  
 3. Create very large records with a wildcard owner name (for example, oversized TXT records).  
 4. Identify open recursive resolvers worldwide by scanning IP space.  
 5. Use packet generation tools to send DNS queries for random names (e.g., `{random}.attack TXT`) to open recursive resolvers worldwide.  
-6. The authoritative server hosting the victim domain will receive a massive volume of traffic and suffer a DDoS amplification.
+6. The outbound capacity from the authoritative server authoritative server hosting the victim domain will be exhausted.
+
+Attacker can also use compromised hosts (e.g. launched from a botnet) using the configured system resolver to launch the attack. Such an attack could in fact be launched using DNS queries triggered by other protocols, e.g. a web ad campaign that incorporates a reference to an URL including a target domain and a random sublabel, or a small compromise of a popular web page that includes an equivalent (invisible) defacement.
+
+This is an efficient attack because a large response can easily be suppressed by the originating stub resolver, e.g. by using UDP transport without EDNS(0) which will trigger a truncated response from the open resolver (TC=1). This means the large responses are never sent to the originating host, and the bandwidth consumed is isolated to the path between the open resolver and the authoritative server. The use of UDP without EDNS(0) is not much of a fingerprint, and it is a stretch to imagine a mitigation based on just that signal.
+
+### 2.2. Attack Model
 
 ---
 
@@ -83,7 +90,7 @@ In our recent tests, some known DNS hosting providers allow users to configure s
 
 ### Observations
 
-1. Cloudflare imposes a limit of 8192 bytes for jumbo TXT records.  
+1. Cloudflare sets a limit of 8192 bytes for jumbo TXT records.  
 2. Microsoft’s DNS service sets a limit of 4096 bytes.  
 3. GoDaddy **has no limit** for jumbo TXT records.  
 4. Alibaba Cloud and DNSPod set limits after we reported this risk to them.
