@@ -79,10 +79,10 @@ In general, operators should enforce size limits on large records—especially t
 
 #### 3.1. Recommended Practices
 
-1. **Apply size limits to large records with wildcard owner names.**  
+1. **Apply size limits to large records with wildcard owner names.**
    Enforce maximum size thresholds for DNS records defined under wildcard owner names to prevent oversized responses from being used for amplification.
 
-2. **Apply size limits to large records with very small TTLs.**  
+2. **Apply size limits to large records with very small TTLs. （can be removed）**  
    Excessively small TTL values increase cache-miss frequency and consequently the number of forwarded queries.
 
 3. **Monitor for abnormal traffic patterns.**  
