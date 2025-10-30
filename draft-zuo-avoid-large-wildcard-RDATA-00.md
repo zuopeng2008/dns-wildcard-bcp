@@ -36,7 +36,6 @@ An effective DNS DDoS amplification attack requires at least three conditions:
 
 These conditions can be satisfied by configuring oversized DNS records with wildcard owner name (for example, very large TXT records) on a shared DNS hosting platform. In this case, an attacker can generate small queries with random labels—while discarding the responses—to induce excessive traffic between recursive resolvers and authoritative name servers. The use of wildcards causes queries for random names to bypass resolver caches and be repeatedly forwarded to upstream authoritative servers.
 
-### 2.1. Attack Model
 Below is an example of how an attacker could launch a DDoS attack to exhaust the outbound capacity from the victim authoritative server:
 
 1. Identify the name server that hosts the victim domain.  
@@ -50,7 +49,26 @@ Attacker can also use compromised hosts (e.g. launched from a botnet) using the 
 
 This is an efficient attack because a large response can easily be suppressed by the originating stub resolver, e.g. by using UDP transport without EDNS(0) which will trigger a truncated response from the open resolver (TC=1). This means the large responses are never sent to the originating host, and the bandwidth consumed is isolated to the path between the open resolver and the authoritative server. The use of UDP without EDNS(0) is not much of a fingerprint, and it is a stretch to imagine a mitigation based on just that signal.
 
-### 2.2. Attack Model
+#### 2.1. Attack Model
+In large-scale reflection or cache-miss amplification scenarios, the total bandwidth impact grows multiplicatively with the number of attack sources and the average response size.  To help operators reason about the practical effect of different response size limits, a simple model is described below.
+Let:
+
+* *N* be the number of attack sources (or open resolvers being exploited);
+* *q* be the per-source query rate (queries per second);
+* *Q* be the query packet size (bytes);
+* *S* be the authoritative response size (bytes); and
+* *R* be the fraction of queries that result in cache misses and thus generate upstream traffic (typically close to 1 for randomized names).
+
+The total query rate is *N·q*.
+The approximate bandwidth at different points in the resolution path is:
+
+* Attacker upstream bandwidth:    *N·q·Q* bytes/s
+* Authoritative server outbound bandwidth: *N·q·R·S* bytes/s
+* Resolver total bandwidth (receive + send): 2·*N·q·R·S* bytes/s
+* Victim inbound bandwidth:    *N·q·R·S* bytes/s
+
+These relationships are linear in the response size *S*, illustrating that a modest reduction in response size directly reduces the required bandwidth at all other participants.
+The model is simplified and ignores retransmissions, protocol overhead, and TCP fallback, but it provides a practical basis for comparing response size caps.
 
 ---
 
@@ -60,7 +78,7 @@ This section describes recommended best practices for keeping DNS data at reason
 
 In general, operators should enforce size limits on large records—especially those with wildcard owner names—and apply restrictive controls where records also have very short TTLs. Exact threshold values should be chosen by each operator based on their environment and risk tolerance.
 
-### Recommended Practices
+#### 3.1. Recommended Practices
 
 1. **Apply size limits to large records with wildcard owner names.**  
    Enforce maximum size thresholds for DNS records defined under wildcard owner names to prevent oversized responses from being used for amplification.
@@ -86,14 +104,36 @@ Applying these measures will reduce the attack surface for DNS amplification att
 
 ## 4. Implementation Experience
 
+#### 4.1. Some observations
 In our recent tests, some known DNS hosting providers allow users to configure super large records with a wildcard owner name. Although the response may exceed the standard UDP packet size limit, it consequently triggers TCP fallback and allows responses to reach approximately 64 KB. This results in an amplification factor exceeding 1000×.
-
-### Observations
 
 1. Cloudflare sets a limit of 8192 bytes for jumbo TXT records.  
 2. Microsoft’s DNS service sets a limit of 4096 bytes.  
-3. GoDaddy **has no limit** for jumbo TXT records.  
+3. GoDaddy HAS NO LIMIT for jumbo TXT records.  
 4. Alibaba Cloud and DNSPod set limits after we reported this risk to them.
+
+#### 4.2. Aggregated bandwidth impact on the various actors at different Response Size Caps
+
+Attack Model describled in 2.1. 
+For illustration, consider two nominal attack-source distributions:
+
+| Parameter                   | Case A   | Case B   |
+| --------------------------- | -------- | -------- |
+| Number of sources (*N*)     | 1,000    | 50,000   |
+| Query rate per source (*q*) | 1 qps    | 1 qps    |
+| Query size (*Q*)            | 60 bytes | 60 bytes |
+| Cache miss ratio (*R*)      | 1.0      | 1.0      |
+
+The table below shows the approximate aggregate bandwidths at different response size caps.
+
+| Response Size Cap(bytes) | Authoritative Outbound |        Resolver Total |        Victim Inbound |
+| -----------------------: | ---------------------: | --------------------: | --------------------: |
+|             **65535**    |   524 Mbps / 26.2 Gbps | 1.05 Gbps / 52.4 Gbps |  524 Mbps / 26.2 Gbps |
+|              **8192**    |  65.5 Mbps / 3.28 Gbps |  131 Mbps / 6.55 Gbps | 65.5 Mbps / 3.28 Gbps |
+|              **4096**    |  32.8 Mbps / 1.64 Gbps | 65.5 Mbps / 3.28 Gbps | 32.8 Mbps / 1.64 Gbps |
+|              **1024**    |   8.2 Mbps / 0.41 Gbps | 16.4 Mbps / 0.82 Gbps |  8.2 Mbps / 0.41 Gbps |
+|               **512**    |   4.1 Mbps / 0.20 Gbps |  8.2 Mbps / 0.41 Gbps |  4.1 Mbps / 0.20 Gbps |
+
 
 ---
 
