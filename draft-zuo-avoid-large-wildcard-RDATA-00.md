@@ -45,7 +45,7 @@ Below is an example of how an attacker could launch a DDoS attack to exhaust the
 5. Use packet generation tools to send DNS queries for random names (e.g., `{random}.attack TXT`) to open recursive resolvers worldwide.  
 6. The outbound capacity from the authoritative server authoritative server hosting the victim domain will be exhausted.
 
-Attacker can also use compromised hosts (e.g. launched from a botnet) using the configured system resolver to launch the attack. Such an attack could in fact be launched using DNS queries triggered by other protocols, e.g. a web ad campaign that incorporates a reference to an URL including a target domain and a random sublabel, or a small compromise of a popular web page that includes an equivalent (invisible) defacement.
+Attackers can also use compromised hosts (e.g. launched from a botnet) using the configured system resolver to launch the attack. Such an attack could be launched using DNS queries triggered by other protocols, e.g. a web ad campaign that incorporates a reference to an URL including a target domain and a random sublabel, or a small compromise of a popular web page that includes an equivalent (invisible) defacement.
 
 This is an efficient attack because a large response can easily be suppressed by the originating stub resolver, e.g. by using UDP transport without EDNS(0) which will trigger a truncated response from the open resolver (TC=1). This means the large responses are never sent to the originating host, and the bandwidth consumed is isolated to the path between the open resolver and the authoritative server. The use of UDP without EDNS(0) is not much of a fingerprint, and it is a stretch to imagine a mitigation based on just that signal.
 
