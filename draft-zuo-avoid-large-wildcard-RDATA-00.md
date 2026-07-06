@@ -1,4 +1,4 @@
-# Avoid Small Records with a Wildcard Owner Name
+# Avoid Large Records with a Wildcard Owner Name
 
 **Author:** Peng Zuo (CNNIC)  
 **Email:** zuopeng@cnnic.cn  
